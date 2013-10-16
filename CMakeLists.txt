@@ -1,11 +1,15 @@
-PROJECT(DGtalTests)
+project(DGtalTests)
 
-CMAKE_MINIMUM_REQUIRED(VERSION 2.6)
+cmake_minimum_required(VERSION 2.6)
 
-FIND_PACKAGE(DGtal REQUIRED)
-INCLUDE_DIRECTORIES(${DGTAL_INCLUDE_DIRS})
-LINK_DIRECTORIES(${DGTAL_LIBRARY_DIRS})
+find_package(DGtal REQUIRED)
+include_directories(${DGTAL_INCLUDE_DIRS})
+link_directories(${DGTAL_LIBRARY_DIRS})
 
-ADD_EXECUTABLE(helloworld helloworld.cpp)
-TARGET_LINK_LIBRARIES(helloworld ${DGTAL_LIBRARIES})
+find_package(Boost REQUIRED COMPONENTS program_options)
+
+add_executable(helloworld helloworld.cpp)
+target_link_libraries(helloworld ${DGTAL_LIBRARIES})
+add_executable(programoptions programoptions.cpp)
+target_link_libraries(programoptions ${Boost_PROGRAM_OPTIONS_LIBRARY})
 
