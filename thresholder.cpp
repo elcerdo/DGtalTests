@@ -1,4 +1,5 @@
 #include <string>
+#include <numeric>
 #include <sys/stat.h>
 using namespace std;
 
@@ -88,6 +89,8 @@ int main(int argc,char * argv[])
 
 		thresholded_image >> params.output;
 
+		unsigned int total = accumulate(thresholded_image.constRange().begin(), thresholded_image.constRange().end(), 0);
+		trace.info() << "total " << total << endl;
 	}
 	catch (exception& ex)
 	{
