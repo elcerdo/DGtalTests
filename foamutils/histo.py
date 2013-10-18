@@ -26,6 +26,6 @@ xlabel("x")
 ylabel("z")
 
 figure()
-hist(flat,bins=64,range=(0,255))
+hist(flat,bins=64)
 
 show()
