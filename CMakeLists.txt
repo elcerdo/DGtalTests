@@ -6,6 +6,8 @@ find_package(DGtal REQUIRED)
 include_directories(${DGTAL_INCLUDE_DIRS})
 link_directories(${DGTAL_LIBRARY_DIRS})
 
-find_package(Boost REQUIRED COMPONENTS program_options)
+find_package(Boost REQUIRED COMPONENTS program_options python)
+include_directories(${Boost_INCLUDE_DIRS} "/usr/include/python2.7")
 
-subdirs(tests)
+add_subdirectory(tests)
+add_subdirectory(foamutils)
