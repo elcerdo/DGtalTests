@@ -11,7 +11,7 @@ using namespace Z3i;
 
 using std::endl;
 
-tuple generic_import(const std::string filename)
+tuple image_import(const std::string filename)
 {
 	trace.emphase() << filename << endl;
 
@@ -39,6 +39,6 @@ tuple generic_import(const std::string filename)
 
 BOOST_PYTHON_MODULE(libfoamutils)
 {
-	def("generic_import", generic_import);
+	def("image_import", image_import);
 }
 
