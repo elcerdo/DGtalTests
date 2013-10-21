@@ -24,7 +24,7 @@ imshow(image[int(image.shape[0]/2),:,:])
 xlabel("x")
 ylabel("z")
 
-#figure()
-#hist(flat,bins=64)
+figure()
+hist(image.ravel(),bins=64)
 
 show()
