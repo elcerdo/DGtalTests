@@ -13,6 +13,7 @@ namespace po = boost::program_options;
 #include <DGtal/helpers/StdDefs.h>
 #include <DGtal/images/ImageSelector.h>
 #include <DGtal/images/ConstImageAdapter.h>
+#include <DGtal/geometry/volumes/distance/DistanceTransformation.h>
 #include <DGtal/io/readers/GenericReader.h>
 #include <DGtal/io/writers/GenericWriter.h>
 #include <DGtal/io/viewers/Viewer3D.h>
@@ -40,7 +41,6 @@ int main(int argc,char * argv[])
 		("threshold,t", po::value<Value>(&params.threshold)->default_value(60), "threshold");
 	po::positional_options_description positional;
 	positional.add("input",1);
-	positional.add("output",1);
 	positional.add("threshold",1);
 
 	try
@@ -66,14 +66,20 @@ int main(int argc,char * argv[])
 		typedef Thresholder<InputImage::Value, false, false> MyThresholder;
 		typedef ConstImageAdapter<InputImage, InputImage::Domain, DefaultFunctor, bool, MyThresholder> ThresholdedImage;
 		const ThresholdedImage thresholded_image(input_image, input_image.domain(), DefaultFunctor(), MyThresholder(params.threshold));
-		const ThresholdedImage::Domain thresholded_domain = thresholded_image.domain();
 
 		trace.info() << thresholded_image << endl;
 
+		typedef DistanceTransformation<Space, ThresholdedImage, L2Metric> DistanceImage;
+		DistanceImage distance_image(thresholded_image.domain(), thresholded_image, L2Metric());
+
+		trace.info() << distance_image << endl;
+		//distance_image >> "distance.vol" << endl;
+
 		typedef DigitalSetSelector<Domain, BIG_DS | LOW_VAR_DS | HIGH_ITER_DS | HIGH_BEL_DS>::Type DigitalSet;
-		DigitalSet registered(input_image.domain());
+		DigitalSet registered(thresholded_image.domain());
 
 		ThresholdedImage::Domain::Size total = 0;
+		const ThresholdedImage::Domain thresholded_domain = thresholded_image.domain();
 		for (ThresholdedImage::Domain::Iterator iter=thresholded_domain.begin(), iter_end=thresholded_domain.end(); iter!=iter_end; iter++)
 		{
 			const ThresholdedImage::Domain::Point& point = *iter;
@@ -81,9 +87,6 @@ int main(int argc,char * argv[])
 			registered.insertNew(*iter);
 			total++;
 		}
-
-		//copy_if(input_image.begin(), input_image.end(), registered.begin(), MyThresholder(params.threshold)); //C++11
-
 		trace.info() << "total " << total << " " << static_cast<int>(100.*total/input_image.size()) << "%" << endl;
 
 		QApplication application(argc,argv);

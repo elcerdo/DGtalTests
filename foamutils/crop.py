@@ -10,8 +10,8 @@ output_filename = sys.argv[2]
 
 image = foamutils.image_import(input_filename)
 print image.shape
-image = image[32:64,32:64,32:64]
-image = image>60
+image = image[32:96,:64,32:96]
+#image = image>60
 print image.shape
 foamutils.image_export(image,output_filename)
 
