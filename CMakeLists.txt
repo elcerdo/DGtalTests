@@ -10,5 +10,4 @@ find_package(Boost REQUIRED COMPONENTS program_options python)
 include_directories(${Boost_INCLUDE_DIRS} "/usr/include/python2.7")
 
 add_subdirectory(tests)
-add_subdirectory(foamutils)
 add_subdirectory(foam)

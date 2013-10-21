@@ -4,10 +4,13 @@
 from distutils.core import setup, Extension
 import os
 
+dgtal_dir = os.environ.get("DGtal","~/git/DGtal")
+dgtal_dir = os.path.expanduser(dgtal_dir)
+
 module1 = Extension(name = 'foamutils_ext',
                     sources = ['foamutils_ext.cpp'],
-                    include_dirs = [os.path.join(os.environ["DGtal"],"install/include")],
-                    library_dirs = [os.path.join(os.environ["DGtal"],"install/lib")],
+                    include_dirs = [os.path.join(dgtal_dir,"install/include")],
+                    library_dirs = [os.path.join(dgtal_dir,"install/lib")],
                     libraries = ['boost_python','DGtal'])
 
 setup (name = 'foamutils',
