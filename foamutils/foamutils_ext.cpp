@@ -37,7 +37,7 @@ tuple image_import(const std::string filename)
 	return payload;
 }
 
-BOOST_PYTHON_MODULE(libfoamutils)
+BOOST_PYTHON_MODULE(foamutils_ext)
 {
 	def("image_import", image_import);
 }
