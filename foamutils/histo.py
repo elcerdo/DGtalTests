@@ -27,4 +27,6 @@ ylabel("z")
 figure()
 hist(image.ravel(),bins=64)
 
+foamutils.image_export(image,"coucou.vol")
+
 show()

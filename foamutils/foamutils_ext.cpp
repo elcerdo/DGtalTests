@@ -15,7 +15,7 @@ tuple image_import(const std::string filename)
 {
 	trace.emphase() << filename << endl;
 
-	typedef ImageSelector<Domain, int>::Type Image;
+	typedef ImageSelector<Domain, unsigned char>::Type Image;
 	const Image image = GenericReader<Image>::import(filename);
 	trace.info() << image << endl;
 
@@ -37,8 +37,34 @@ tuple image_import(const std::string filename)
 	return payload;
 }
 
+void image_export(tuple shape, list flat, const std::string filename)
+{
+	trace.emphase() << filename << endl;
+
+	const Domain::Size sx = extract<Domain::Size>(shape[2]);
+	const Domain::Size sy = extract<Domain::Size>(shape[1]);
+	const Domain::Size sz = extract<Domain::Size>(shape[0]);
+	const Domain domain(Point(0,0), Point(sx-1, sy-1, sz-1));
+	trace.info() << domain << endl;
+
+	typedef ImageSelector<Domain, unsigned char>::Type Image;
+	Image image(domain);
+
+	Image::Range range = image.range();
+	size_t kk = 0;
+	for (Image::Range::Iterator iter=range.begin(), iter_end=range.end(); iter!=iter_end; iter++)
+	{
+		Image::Value value = extract<Image::Value>(flat[kk]);
+		*iter = value;
+		kk++;
+	}
+
+	image >> filename;
+}
+
 BOOST_PYTHON_MODULE(foamutils_ext)
 {
 	def("image_import", image_import);
+	def("image_export", image_export);
 }
 
