@@ -13,6 +13,7 @@ namespace po = boost::program_options;
 #include <DGtal/base/Common.h>
 #include <DGtal/helpers/StdDefs.h>
 #include <DGtal/images/ImageSelector.h>
+#include <DGtal/images/ImageContainerByITKImage.h>
 #include <DGtal/images/ConstImageAdapter.h>
 #include <DGtal/geometry/volumes/distance/DistanceTransformation.h>
 #include <DGtal/io/readers/GenericReader.h>
@@ -20,6 +21,8 @@ namespace po = boost::program_options;
 #include <DGtal/io/viewers/Viewer3D.h>
 using namespace DGtal;
 using namespace Z3i;
+
+#include <itkImageFileWriter.h>
 
 #include <QApplication>
 
@@ -72,6 +75,32 @@ Params parse_options(int argc, char* argv[])
 	return params;
 }
 
+template <typename Image>
+void write_itk_image(const Image& image, const string& filename)
+{
+	BOOST_CONCEPT_ASSERT(( CConstImage<Image> ));
+
+	typedef experimental::ImageContainerByITKImage<typename Image::Domain, typename Image::Value> MyITKImage;
+	BOOST_CONCEPT_ASSERT(( CPointFunctor<MyITKImage> ));
+
+	cout << "copy" << endl;
+	MyITKImage itk_image(image.domain());
+	typename MyITKImage::Range::OutputIterator itk_iter = itk_image.range().outputIterator();
+	for (typename Image::ConstRange::ConstIterator iter=image.constRange().begin(), iter_end=image.constRange().end(); iter!=iter_end; iter++)
+	{
+			*itk_iter = *iter;
+			itk_iter++;
+	}
+	cout << "copied" << endl;
+
+	typedef itk::ImageFileWriter<typename MyITKImage::ITKImage> MyITKImageWriter;
+	typename MyITKImageWriter::Pointer writer = MyITKImageWriter::New();
+	writer->SetFileName(filename);
+	writer->SetInput(itk_image.getITKImagePointer());
+	writer->Update();
+	cout << "wrote" << endl;
+}
+
 int main(int argc, char* argv[])
 {
 	Params params = parse_options(argc, argv);
@@ -91,7 +120,7 @@ int main(int argc, char* argv[])
 	DistanceImage distance_image(thresholded_image.domain(), thresholded_image, L2Metric());
 
 	trace.info() << distance_image << endl;
-	//distance_image >> "distance.vol" << endl;
+	write_itk_image(distance_image, "distance.mha");
 
 	typedef DigitalSetSelector<Domain, BIG_DS | LOW_VAR_DS | HIGH_ITER_DS | HIGH_BEL_DS>::Type DigitalSet;
 	DigitalSet registered_set(thresholded_image.domain());
