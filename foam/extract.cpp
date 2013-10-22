@@ -81,17 +81,9 @@ void write_itk_image(const Image& image, const string& filename)
 	BOOST_CONCEPT_ASSERT(( CConstImage<Image> ));
 
 	typedef experimental::ImageContainerByITKImage<typename Image::Domain, typename Image::Value> MyITKImage;
-	BOOST_CONCEPT_ASSERT(( CPointFunctor<MyITKImage> ));
-
-	cout << "copy" << endl;
 	MyITKImage itk_image(image.domain());
-	typename MyITKImage::Range::OutputIterator itk_iter = itk_image.range().outputIterator();
-	for (typename Image::ConstRange::ConstIterator iter=image.constRange().begin(), iter_end=image.constRange().end(); iter!=iter_end; iter++)
-	{
-			*itk_iter = *iter;
-			itk_iter++;
-	}
-	cout << "copied" << endl;
+
+	std::copy(image.constRange().begin(), image.constRange().end(), itk_image.range().outputIterator());
 
 	typedef itk::ImageFileWriter<typename MyITKImage::ITKImage> MyITKImageWriter;
 	typename MyITKImageWriter::Pointer writer = MyITKImageWriter::New();
