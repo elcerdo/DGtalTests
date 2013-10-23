@@ -90,7 +90,8 @@ void write_itk_image(const Image& image, const string& filename)
 	writer->SetFileName(filename);
 	writer->SetInput(itk_image.getITKImagePointer());
 	writer->Update();
-	cout << "wrote" << endl;
+
+	trace.info() << "wrote " << itk_image << " to " << filename << endl;
 }
 
 int main(int argc, char* argv[])
