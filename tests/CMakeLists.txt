@@ -7,6 +7,8 @@ add_executable(board2d board2d.cpp)
 target_link_libraries(board2d ${DGTAL_LIBRARIES})
 add_executable(itkregion itkregion.cpp)
 target_link_libraries(itkregion ${ITK_LIBRARIES})
+add_executable(itksmartpointer itksmartpointer.cpp)
+target_link_libraries(itksmartpointer ${ITK_LIBRARIES})
 
 add_executable(thresholder thresholder.cpp)
 target_link_libraries(thresholder ${DGTAL_LIBRARIES} ${Boost_PROGRAM_OPTIONS_LIBRARY})
