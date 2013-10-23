@@ -27,6 +27,7 @@ using namespace Z3i;
 #include <QApplication>
 
 typedef unsigned int ImageValue;
+typedef Viewer3D<> Viewer;
 
 struct Params
 {
@@ -91,54 +92,67 @@ void write_itk_image(const Image& image, const string& filename)
 	writer->SetInput(itk_image.getITKImagePointer());
 	writer->Update();
 
-	trace.info() << "wrote " << itk_image << " to " << filename << endl;
+	trace.info() << "wrote " << filename << endl;
+}
+
+template <typename Image>
+int display_image(const Image& image, Viewer& viewer) 
+{
+	BOOST_CONCEPT_ASSERT(( CConstImage<Image> ));
+
+	typedef typename DigitalSetSelector<typename Image::Domain, BIG_DS | LOW_VAR_DS | HIGH_ITER_DS | HIGH_BEL_DS>::Type DigitalSet;
+	const typename Image::Domain domain = image.domain();
+	DigitalSet registered_set(domain);
+
+	typename Image::Domain::Size displayed = 0;
+	for (typename Image::Domain::Iterator iter=domain.begin(), iter_end=domain.end(); iter!=iter_end; iter++)
+	{
+		const typename Image::Domain::Point& point = *iter;
+		if (!image(point)) continue;
+		registered_set.insertNew(*iter);
+		displayed++;
+	}
+	trace.info() << "displayed=" << displayed << " " << static_cast<int>(100.*displayed/domain.size()) << "%" << endl;
+
+
+	viewer << registered_set;
 }
 
 int main(int argc, char* argv[])
 {
-	Params params = parse_options(argc, argv);
-
-	typedef ImageSelector<Domain, ImageValue>::Type InputImage;
-	InputImage input_image = GenericReader<InputImage>::import(params.input);
-
-	trace.info() << input_image << endl;
-
-	typedef Thresholder<ImageValue, false, false> MyThresholder;
-	typedef ConstImageAdapter<InputImage, InputImage::Domain, DefaultFunctor, bool, MyThresholder> ThresholdedImage;
-	const ThresholdedImage thresholded_image(input_image, input_image.domain(), DefaultFunctor(), MyThresholder(params.threshold));
-
-	trace.info() << thresholded_image << endl;
-
-	typedef DistanceTransformation<Space, ThresholdedImage, L2Metric> DistanceImage;
-	DistanceImage distance_image(thresholded_image.domain(), thresholded_image, L2Metric());
-
-	trace.info() << distance_image << endl;
-	write_itk_image(distance_image, "distance.mha");
-
-	typedef DigitalSetSelector<Domain, BIG_DS | LOW_VAR_DS | HIGH_ITER_DS | HIGH_BEL_DS>::Type DigitalSet;
-	DigitalSet registered_set(thresholded_image.domain());
-
-	ThresholdedImage::Domain::Size total = 0;
-	const ThresholdedImage::Domain thresholded_domain = thresholded_image.domain();
-	for (ThresholdedImage::Domain::Iterator iter=thresholded_domain.begin(), iter_end=thresholded_domain.end(); iter!=iter_end; iter++)
-	{
-		const ThresholdedImage::Domain::Point& point = *iter;
-		if (!thresholded_image(point)) continue;
-		registered_set.insertNew(*iter);
-		total++;
-	}
-	trace.info() << "total " << total << " " << static_cast<int>(100.*total/input_image.size()) << "%" << endl;
-
 	QApplication application(argc,argv);
-
-	typedef Viewer3D<> Viewer;
 	Viewer viewer;
 	viewer.show();
 
-	viewer << registered_set;
-	viewer << Viewer::updateDisplay;
+	Params params = parse_options(argc, argv);
 
-	trace.info() << "byebye" << endl;
+	// load input image
+	trace.beginBlock("loading");
+	trace.info() << "input=" << params.input << endl;
+	typedef ImageSelector<Domain, ImageValue>::Type InputImage;
+	const InputImage input_image = GenericReader<InputImage>::import(params.input);
+	const Domain domain = input_image.domain();
+	trace.info() << "domain=" << domain << endl;
+	trace.endBlock();
+
+	// threshold input image
+	trace.beginBlock("thresholding");
+	trace.info() << "threshold=" << params.threshold << endl;
+	typedef Thresholder<ImageValue, false, false> InputThresholder;
+	typedef ConstImageAdapter<InputImage, InputImage::Domain, DefaultFunctor, bool, InputThresholder> ThresholdedInputImage;
+	const ThresholdedInputImage thresholded_input_image(input_image, domain, DefaultFunctor(), InputThresholder(params.threshold));
+	display_image(thresholded_input_image, viewer);
+	trace.endBlock();
+
+	trace.beginBlock("morphologic closing");
+	// erode image
+	typedef DistanceTransformation<Space, ThresholdedInputImage, L2Metric> DistanceErodeImage;
+	const DistanceErodeImage distance_erode_image(domain, thresholded_input_image, L2Metric());
+	write_itk_image(distance_erode_image, "distance_erode.mha");
+	trace.endBlock();
+
+	viewer << Viewer::updateDisplay;
 	return application.exec();
 }
+
 
