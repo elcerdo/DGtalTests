@@ -18,6 +18,8 @@ namespace po = boost::program_options;
 #include <DGtal/geometry/volumes/distance/DistanceTransformation.h>
 #include <DGtal/io/readers/GenericReader.h>
 #include <DGtal/io/writers/GenericWriter.h>
+#include <DGtal/io/DrawWithDisplay3DModifier.h>
+#include <DGtal/io/Color.h>
 #include <DGtal/io/viewers/Viewer3D.h>
 using namespace DGtal;
 using namespace Z3i;
@@ -103,6 +105,7 @@ template <typename Image>
 int display_image(const Image& image, Viewer& viewer) 
 {
 	BOOST_CONCEPT_ASSERT(( CConstImage<Image> ));
+	BOOST_STATIC_ASSERT(( boost::is_same<typename Image::Value, bool>::value ));
 
 	typedef typename DigitalSetSelector<typename Image::Domain, BIG_DS | LOW_VAR_DS | HIGH_ITER_DS | HIGH_BEL_DS>::Type DigitalSet;
 	const typename Image::Domain domain = image.domain();
@@ -116,8 +119,7 @@ int display_image(const Image& image, Viewer& viewer)
 		registered_set.insertNew(*iter);
 		displayed++;
 	}
-	trace.info() << "displayed=" << displayed << " " << static_cast<int>(100.*displayed/domain.size()) << "%" << endl;
-
+	trace.info() << "display " << displayed << " points (" << static_cast<int>(100.*displayed/domain.size()) << "%)" << endl;
 
 	viewer << registered_set;
 }
@@ -147,8 +149,9 @@ int main(int argc, char* argv[])
 	typedef Thresholder<ImageValue, false, false> InputThresholder; // strictly greater
 	typedef ConstImageAdapter<InputImage, Domain, DefaultFunctor, bool, InputThresholder> ThresholdedInputImage;
 	const ThresholdedInputImage thresholded_input_image(input_image, domain, DefaultFunctor(), InputThresholder(params.threshold));
-	display_image(thresholded_input_image, viewer);
 	write_itk_image(thresholded_input_image, "thresholded_input.mha");
+	viewer << CustomColors3D(Color(255,0,0), Color(255,255,255));
+	display_image(thresholded_input_image, viewer);
 	trace.endBlock();
 
 	trace.beginBlock("morphologic closing");
@@ -165,13 +168,15 @@ int main(int argc, char* argv[])
 	const DilatedImage dilated_image(distance_dilate_image, domain, DefaultFunctor(), DistanceDilateThresholder(params.closing_size));
 	write_itk_image(dilated_image, "dilated.mha");
 	// erode image
-	typedef DistanceTransformation<Space, ThresholdedInputImage, L2Metric> DistanceErodeImage;
-	const DistanceErodeImage distance_erode_image(domain, thresholded_input_image, L2Metric());
+	typedef DistanceTransformation<Space, DilatedImage, L2Metric> DistanceErodeImage;
+	const DistanceErodeImage distance_erode_image(domain, dilated_image, L2Metric());
 	write_itk_image(distance_erode_image, "distance_erode.mha");
 	typedef Thresholder<DistanceErodeImage::Value, false, false> DistanceErodeThresholder; // strictly greater
 	typedef ConstImageAdapter<DistanceErodeImage, Domain, DefaultFunctor, bool, DistanceErodeThresholder> ErodedImage;
-	const ErodedImage eroded_image(distance_erode_image, domain, DefaultFunctor(), DistanceErodeThresholder(params.closing_size));
-	write_itk_image(eroded_image, "eroded.mha");
+	const ErodedImage closed_image(distance_erode_image, domain, DefaultFunctor(), DistanceErodeThresholder(params.closing_size));
+	write_itk_image(closed_image, "closed.mha");
+	viewer << CustomColors3D(Color(255,0,0), Color(255,0,0,255));
+	display_image(closed_image, viewer);
 	trace.endBlock();
 
 	viewer << Viewer::updateDisplay;
