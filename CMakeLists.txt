@@ -10,8 +10,7 @@ find_package(ITK REQUIRED)
 include_directories(${ITK_INCLUDE_DIRS})
 include_directories(${ITK_LIBRARY_DIRS})
 
-find_package(Boost REQUIRED COMPONENTS program_options python)
-include_directories(${Boost_INCLUDE_DIRS} "/usr/include/python2.7")
+find_package(Boost REQUIRED COMPONENTS program_options)
 
 add_subdirectory(tests)
 add_subdirectory(foam)
