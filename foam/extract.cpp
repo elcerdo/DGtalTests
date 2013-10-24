@@ -33,6 +33,7 @@ struct Params
 {
 	string input;
 	ImageValue threshold;
+	double closing_size;
 };
 
 Params parse_options(int argc, char* argv[])
@@ -44,10 +45,12 @@ Params parse_options(int argc, char* argv[])
 	options.add_options()
 		("help,h", "display this message")
 		("input,i", po::value<string>(&params.input)->default_value(""), "input file")
-		("threshold,t", po::value<ImageValue>(&params.threshold)->default_value(60), "threshold");
+		("threshold,t", po::value<ImageValue>(&params.threshold)->default_value(60), "threshold")
+		("closing-size,c", po::value<double>(&params.closing_size)->default_value(1.), "morphologic closing size");
 	po::positional_options_description positional;
 	positional.add("input",1);
 	positional.add("threshold",1);
+	positional.add("closing-size",1);
 
 	try
 	{
@@ -63,8 +66,9 @@ Params parse_options(int argc, char* argv[])
 
 		if (params.input == "") throw po::required_option("input");
 
-		trace.info() << "input " << params.input << endl;
-		trace.info() << "threshold " << params.threshold << endl;
+		trace.info() << "input=" << params.input << endl;
+		trace.info() << "threshold=" << params.threshold << endl;
+		trace.info() << "closing_size=" << params.closing_size << endl;
 	}
 	catch (exception& ex)
 	{
@@ -81,7 +85,7 @@ void write_itk_image(const Image& image, const string& filename)
 {
 	BOOST_CONCEPT_ASSERT(( CConstImage<Image> ));
 
-	typedef experimental::ImageContainerByITKImage<typename Image::Domain, typename Image::Value> MyITKImage;
+	typedef experimental::ImageContainerByITKImage<typename Image::Domain, double> MyITKImage;
 	MyITKImage itk_image(image.domain());
 
 	std::copy(image.constRange().begin(), image.constRange().end(), itk_image.range().outputIterator());
@@ -124,10 +128,12 @@ int main(int argc, char* argv[])
 	Viewer viewer;
 	viewer.show();
 
+	trace.beginBlock("parsing params");
 	Params params = parse_options(argc, argv);
+	trace.endBlock();
 
 	// load input image
-	trace.beginBlock("loading");
+	trace.beginBlock("loading image");
 	trace.info() << "input=" << params.input << endl;
 	typedef ImageSelector<Domain, ImageValue>::Type InputImage;
 	const InputImage input_image = GenericReader<InputImage>::import(params.input);
@@ -138,17 +144,34 @@ int main(int argc, char* argv[])
 	// threshold input image
 	trace.beginBlock("thresholding");
 	trace.info() << "threshold=" << params.threshold << endl;
-	typedef Thresholder<ImageValue, false, false> InputThresholder;
-	typedef ConstImageAdapter<InputImage, InputImage::Domain, DefaultFunctor, bool, InputThresholder> ThresholdedInputImage;
+	typedef Thresholder<ImageValue, false, false> InputThresholder; // strictly greater
+	typedef ConstImageAdapter<InputImage, Domain, DefaultFunctor, bool, InputThresholder> ThresholdedInputImage;
 	const ThresholdedInputImage thresholded_input_image(input_image, domain, DefaultFunctor(), InputThresholder(params.threshold));
 	display_image(thresholded_input_image, viewer);
+	write_itk_image(thresholded_input_image, "thresholded_input.mha");
 	trace.endBlock();
 
 	trace.beginBlock("morphologic closing");
+	trace.info() << "closing_size=" << params.closing_size << endl;
+	// dilate image
+	typedef ConstImageAdapter<ThresholdedInputImage, Domain, DefaultFunctor, bool, NotBoolFct1> ComplementaryThresholdedInputImage;
+	const ComplementaryThresholdedInputImage complementary_input_image(thresholded_input_image, domain, DefaultFunctor(), NotBoolFct1());
+	write_itk_image(complementary_input_image, "complementary_input.mha");
+	typedef DistanceTransformation<Space, ComplementaryThresholdedInputImage, L2Metric> DistanceDilateImage;
+	const DistanceDilateImage distance_dilate_image(domain, complementary_input_image, L2Metric());
+	write_itk_image(distance_dilate_image, "distance_dilate.mha");
+	typedef Thresholder<DistanceDilateImage::Value, true, true> DistanceDilateThresholder; // lower or equal
+	typedef ConstImageAdapter<DistanceDilateImage, Domain, DefaultFunctor, bool, DistanceDilateThresholder> DilatedImage;
+	const DilatedImage dilated_image(distance_dilate_image, domain, DefaultFunctor(), DistanceDilateThresholder(params.closing_size));
+	write_itk_image(dilated_image, "dilated.mha");
 	// erode image
 	typedef DistanceTransformation<Space, ThresholdedInputImage, L2Metric> DistanceErodeImage;
 	const DistanceErodeImage distance_erode_image(domain, thresholded_input_image, L2Metric());
 	write_itk_image(distance_erode_image, "distance_erode.mha");
+	typedef Thresholder<DistanceErodeImage::Value, false, false> DistanceErodeThresholder; // strictly greater
+	typedef ConstImageAdapter<DistanceErodeImage, Domain, DefaultFunctor, bool, DistanceErodeThresholder> ErodedImage;
+	const ErodedImage eroded_image(distance_erode_image, domain, DefaultFunctor(), DistanceErodeThresholder(params.closing_size));
+	write_itk_image(eroded_image, "eroded.mha");
 	trace.endBlock();
 
 	viewer << Viewer::updateDisplay;
